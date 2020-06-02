@@ -1,0 +1,13 @@
+numpy
+scipy
+pysptk
+pyworld
+librosa
+matplotlib
+scikit-image
+soundfile
+sprocket
+logzero
+pyyaml
+tensorboardX
+tensorboard

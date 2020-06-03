@@ -1,6 +1,6 @@
 # CycleVAE-VC implementation with Pytorch
 
-This repository provides UNOFFICIAL [CycleVAE-vc](https://arxiv.org/abs/1907.10185) implementations with Pytorch.
+This repository provides UNOFFICIAL [CycleVAE-VC](https://arxiv.org/abs/1907.10185) implementations with Pytorch.
 
 You can combine your own vocoder to get great converted speech!!
 
@@ -12,7 +12,7 @@ The goal of this repository is to provide VC model trained with completely non-p
 Also this repository is to provide many-to-many conversion model.
 
 I modified the model from @patrickltobing 's implementation as below.
-In the original model, AR structure is used for ConvRnn network. However, it takes quite a long time to train with that model. So I used RNN-based model for the faster training.
+In the original model, AR structure is used for ConvRnn network. However, it takes quite a long time to train with that model. So I used RNN-based model to train faster.
 
 ![](./for_readme/img/structure.png)
 
@@ -121,15 +121,6 @@ wav
   - model_name : Name of the saved model. Model name will be  `<model_name>.<num_iter>.pt` .
   - log_name : Logging directory to save events files from tensorboard
 
-  
-
-  **Future Work**
-
-  - [ ] Add option to set sampling rate from outside of the python script.
-  - [ ] Add option to set model_name from outside of the shellscript
-  - [ ] Add option to set log_name from outside of the shellscript
-
-
 
 ### Step3: Convert voice
 
@@ -159,9 +150,9 @@ wav
 
 - sounds
 
-  - demo sounds are acquired from https://voice-statistics.github.io/
+  - demo wav files are acquired from https://voice-statistics.github.io/
 
-  - You can find demo wav files at `./for_readme/wav` 
+  - You can find converted wav files in `./for_readme/wav` 
 
     
 

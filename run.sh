@@ -19,6 +19,9 @@ shiftms=5
 mcep_dim=49
 fftl=1024
 
+# training related
+model_name=test_model
+
 # number of cpus
 n_jobs=16
 
@@ -97,10 +100,13 @@ if echo ${stage} | grep -q 1; then
 			--fftl ${fftl} \
 			--n_jobs ${n_jobs}
 	done
+
 	# calc total stats
-  python src/prepro/calc_stats.py \
-	--hdf5_dir ${data_dir}/train \
-    	--stats_dir ${data_dir}/stats
+	mkdir -p ${data_dir}/stats
+
+  	python src/prepro/calc_stats.py \
+		--hdf5_dir ${data_dir}/train \
+    		--stats_dir ${data_dir}/stats
 fi
 
 ######################################
@@ -115,25 +121,25 @@ if echo ${stage} | grep -q 2; then
 	        --total_stats ${data_dir}/total_stats.h5 \
 	        --conf_path ./config/vc.conf \
 	        --model_dir ${model_dir} \
-		--model_name branch-test \
-	        --decode_dir ${exp_dir}/branch-test \
-	        --log_name branch-test
-	       	#--resume ${model_dir}/jvs001-yukari.5507.pt
+		--model_name ${model_name} \
+	        --decode_dir ${exp_dir}/${model_name} \
+	        --log_name ${model_name}
+	       	#--resume ${model_dir}/${model_name}.5507.pt
 fi
 
 ######################################
 ############ stage 3 ################3
 # decode
 if echo ${stage} | grep -q 3; then
-	decode_dir=${exp_dir}/branch-test
+	decode_dir=${exp_dir}/${model_name}
 	mkdir -p ${decode_dir}
 	python src/decode.py \
 		--test_dir ${data_dir}/val \
 		--exp_dir ${decode_dir} \
 		--stats_dir ${data_dir}/stats \
 		--conf_path ./config/vc.conf \
-		--checkpoint ${model_dir}/branch-test.1448.pt \
-		--log_name branch-test \
+		--checkpoint ${model_dir}/${model_name}.1448.pt \
+		--log_name ${model_name} \
 		--fs ${fs} \
 		--shiftms ${shiftms} \
 		--mcep_dim ${mcep_dim} \

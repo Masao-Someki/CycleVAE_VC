@@ -9,16 +9,12 @@ You can combine your own vocoder to get great converted speech!!
 > Source of the figure: https://arxiv.org/pdf/1907.10185.pdf
 
 The goal of this repository is to provide VC model trained with completely non-parallel data.
-
 Also this repository is to provide many-to-many conversion model.
 
-
-
 I modified the model from @patrickltobing 's implementation as below.
-
 In the original model, AR structure is used for ConvRnn network. However, it takes quite a long time to train with that model. So I used RNN-based model for the faster training.
 
-![](/home/masao/doc/vc/for_readme/img/structure.png)
+![](./for_readme/img/structure.png)
 
 
 
@@ -117,7 +113,7 @@ Before training the model, be sure to locate your wav files under specific direc
 
   
 
-  **Feature Work**
+  **Future Work**
 
   - [ ] Add option to set sampling rate from outside of the python script.
   - [ ] Add option to set model_name from outside of the shellscript

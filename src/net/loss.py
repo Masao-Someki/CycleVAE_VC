@@ -1,3 +1,5 @@
+# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
 import numpy as np
 import torch
 import torch.nn as nn

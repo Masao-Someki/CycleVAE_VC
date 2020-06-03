@@ -1,4 +1,7 @@
 # This script is the model definitioimportn
+
+# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

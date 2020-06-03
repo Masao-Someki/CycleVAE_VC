@@ -1,5 +1,8 @@
 # This script is to store util functions
 
+# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
+
 import json
 
 
@@ -28,9 +31,9 @@ class Config(object):
 
     def __getitem__(self, key):
         return self.dic[key]
-    
+
     def keys(self):
         return self.dic.keys()
-    
+
     def values(self):
         return self.dic.values()

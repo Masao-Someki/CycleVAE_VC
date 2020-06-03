@@ -1,4 +1,7 @@
 # Script for ConvRNN
+
+# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -55,7 +58,7 @@ class ConvRNN(nn.Module):
         x = x.transpose(1, 2)
 
         return x
-        
+
 
 class GLU(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size, dilation):

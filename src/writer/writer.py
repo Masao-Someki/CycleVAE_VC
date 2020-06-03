@@ -1,16 +1,8 @@
-# This class hadles logging functions.
-# Usage:
-# from writer import Logger
-# logger = Logger('train', 'val', filename='log_path.log')
-#
-# logger.train.info('training loss: %.3f' % loss)
-# logger.train.wav(wav_array, 'save_path.wav')
-# logger.val.info('starting validation...')
+# This class hadles logging functions.# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
 
-# and the output log is looking like:
-# [Time] train  - training loss: 0.344
-# [Time] train  - save wav file at <save_path.wav>
-# [Time] val    - Starting validation...
+# Copyright 2020 Masao Someki
+#  MIT License (https://opensource.org/licenses/MIT)
 
 import os
 import logging
@@ -22,6 +14,19 @@ from .log_util import CustomLogClass
 
 class Logger(object):
     ''' Logger class for the machine learning.
+
+    You can use this class as:
+
+    from writer import Logger
+    logger = Logger('train', 'val', filename='log_path.log')
+    logger.train.info('training loss: %.3f' % loss)
+    logger.train.wav(wav_array, 'save_path.wav')
+    logger.val.info('starting validation...')
+
+    and the output log is looking like:
+    [Time] train  - training loss: 0.344
+    [Time] train  - save wav file at <save_path.wav>
+    [Time] val    - Starting validation...
 
     Args:
         *args: name of the logger instances

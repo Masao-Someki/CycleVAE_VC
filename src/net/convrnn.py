@@ -35,9 +35,11 @@ class ConvRNN(nn.Module):
         if self.config.rnn.model_arch == 'ar':
             self.rnn.add_conv(self.conv)
             self.ar = True
-        else:
+        elif self.config.rnn.model_arch == "rnn":
             self.conv2 = nn.Conv1d(self.rnn.in_dim + self.config.rnn.out_dim,
                     self.config.rnn.out_dim, 1)
+        else:
+            raise ValueError('model arch %s is not supported.' % self.config.rnn.model_arch)
 
     def forward(self, x):
         # shape of x: (B, L, D)

@@ -50,6 +50,16 @@ Please check if the `venv` directory is successfully located under the tools dir
 ## Usage
 
 Before training the model, be sure to locate your wav files under specific directory.
+I assume that the structure of the wav directory is:
+```
+wav
+├── train
+│   ├── jvs001
+│   └── jvs002
+└── val
+    ├── jvs001
+    └── jvs002
+```
 
 ### Step0: path
 

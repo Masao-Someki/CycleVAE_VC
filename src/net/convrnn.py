@@ -13,6 +13,7 @@ class ConvRNN(nn.Module):
         super(ConvRNN, self).__init__()
         self.config = model_config
         self.device = device
+        self.ar = False
 
         # receptive_field
         rec_field = self.config.dil_conv.kernel_size ** self.config.dil_conv.n_convs
@@ -26,14 +27,19 @@ class ConvRNN(nn.Module):
         self.h_size = self.rnn.h_size #, self.rnn2.h_size]
 
         # out_dim
-        if self.config.rnn.bidirectional:
-            self.conv = nn.Conv1d(self.config.rnn.h_units * 2, self.config.rnn.out_dim, 1)
+        self.conv = nn.Conv1d(
+                self.config.rnn.h_units * (self.config.rnn.bidirectional + 1),
+                self.config.rnn.out_dim, 1)
+
+        # AR model
+        if self.config.rnn.model_arch == 'ar':
+            self.rnn.add_conv(self.conv)
+            self.ar = True
+        elif self.config.rnn.model_arch == "rnn":
             self.conv2 = nn.Conv1d(self.rnn.in_dim + self.config.rnn.out_dim,
                     self.config.rnn.out_dim, 1)
         else:
-            self.conv = nn.Conv1d(self.config.rnn.h_units, self.config.rnn.out_dim, 1)
-            self.conv2 = nn.Conv1d(self.rnn.in_dim + self.config.rnn.out_dim,
-                    self.config.rnn.out_dim, 1)
+            raise ValueError('model arch %s is not supported.' % self.config.rnn.model_arch)
 
     def forward(self, x):
         # shape of x: (B, L, D)
@@ -45,17 +51,20 @@ class ConvRNN(nn.Module):
         conv_out = x.transpose(1, 2) # (B, L, D)-
 
         x = conv_out.transpose(0, 1) # (L, B, D)
+
+        # rnn-based or ar based.
         x = self.rnn(x) # (L, B, D)
         x = x.transpose(0, 1) # (B, L, D)
 
-        x = x.transpose(1, 2) # (B, L, D) to (B, D, L)
-        x = self.conv(x) # (B, D, L)
-        x = x.transpose(1, 2) # (B, D, L) to (B, L, D)
+        if not self.ar:
+            x = x.transpose(1, 2) # (B, L, D) to (B, D, L)
+            x = self.conv(x) # (B, D, L)
+            x = x.transpose(1, 2) # (B, D, L) to (B, L, D)
 
-        x = torch.cat((x, conv_out), 2) #( B, L, D)
-        x = x.transpose(1, 2)
-        x = self.conv2(x)
-        x = x.transpose(1, 2)
+            x = torch.cat((x, conv_out), 2) #( B, L, D)
+            x = x.transpose(1, 2)
+            x = self.conv2(x)
+            x = x.transpose(1, 2) # B, L, D)
 
         return x
 
@@ -121,8 +130,22 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.config = config_rnn
         self.device = device
+        self.ar = False
 
         self.in_dim = config_conv.in_dim * config_conv.kernel_size ** config_conv.n_convs
+        self.set_rnn_layer()
+
+        self.dropout = nn.Dropout(p=0.5)
+        self.h_size = (self.config.n_layers * (self.config.bidirectional + 1), 
+                1, self.config.h_units)
+
+    def add_conv(self, layer):
+        self.ar_layer = layer
+        self.in_dim = self.in_dim + self.config.out_dim
+        self.set_rnn_layer()
+        self.ar = True
+
+    def set_rnn_layer(self):
         if self.config.rnn_type == 'lstm':
             self.rnn = nn.LSTM(
                     self.in_dim,
@@ -140,10 +163,22 @@ class RNN(nn.Module):
         else:
             raise ValueError('rnn type %s is not supported.' % self.config.rnn_type)
 
-        self.dropout = nn.Dropout(p=0.5)
-        self.h_size = (self.config.n_layers * (self.config.bidirectional + 1), 1, self.config.h_units)
-
     def forward(self, x):
-        ret, _ = self.rnn(x)
-        ret = self.dropout(ret)
+        # x: (L, B, D)
+        if self.ar:
+            y_in = torch.zeros((1, x.shape[1], self.config.out_dim)).to(self.device)
+            h_in = torch.zeros((self.config.n_layers * (self.config.bidirectional + 1),
+                                x.shape[1], self.config.h_units)).to(self.device)
+
+            # AR model
+            ret = torch.Tensor([]).to(self.device)
+            for i in range(x.shape[0]):
+                inputs = torch.cat((y_in, x[i:(i+1)]), dim=2)
+                out, h_in = self.rnn(inputs, h_in) # (L, B, D)
+                out = self.ar_layer(out.transpose(0, 1).transpose(1, 2)) # (B, D, L)
+                y_in = out.transpose(1, 2).transpose(0, 1) # (L, B, D)
+                ret = torch.cat((ret, y_in), dim=0) # (L, B, D)
+        else:
+            ret,_ = self.rnn(x)
+            ret = self.dropout(ret)
         return ret

@@ -117,7 +117,7 @@ Before training the model, be sure to locate your wav files under specific direc
 
   
 
-  **Feature Work**
+  **Future Work**
 
   - [ ] Add option to set sampling rate from outside of the python script.
   - [ ] Add option to set model_name from outside of the shellscript

@@ -18,7 +18,7 @@ I modified the model from @patrickltobing 's implementation as below.
 
 In the original model, AR structure is used for ConvRnn network. However, it takes quite a long time to train with that model. So I used RNN-based model for the faster training.
 
-![](/home/masao/doc/vc/for_readme/img/structure.png)
+![](./for_readme/img/structure.png)
 
 
 

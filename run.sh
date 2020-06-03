@@ -78,8 +78,8 @@ if echo ${stage} | grep -q 1; then
 	done
 	# calc total stats
   python src/prepro/calc_stats.py \
-					--hdf5_dir ${data_dir}/train \
-    			--stats_dir ${data_dir}/stats
+	--hdf5_dir ${data_dir}/train \
+    	--stats_dir ${data_dir}/stats
 fi
 
 ######################################

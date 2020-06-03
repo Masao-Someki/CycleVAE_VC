@@ -26,9 +26,27 @@ LP_CUTOFF = 20
 
 
 class Decoder(object):
-    def __init__(self, save_dir, scaler, logger=None):
+    def __init__(self, args, scaler, logger=None):
         # directory to save wav files
-        self.save_dir = save_dir
+        self.save_dir = args.exp_dir
+        self.fs = args.fs
+        self.shiftms = args.shiftms
+        self.fftl = args.fftl
+
+        # mcep_alpha
+        if args.fs == 16000:
+            self.mcep_alpha = 0.41
+        elif args.fs == 22050:
+            self.mcep_alpha = 0.455
+        elif args.fs == 24000:
+            self.mcep_alpha = 0.466
+        elif args.fs == 44100:
+            self.mcep_alpha = 0.544
+        elif args.fs == 48000:
+            self.mcep_alpha = 0.554
+        else:
+            raise ValueError('sampling rate should be one of  \
+                16000, 22050, 24000, 44100, 48000')
 
         # scaler
         self.scaler = scaler
@@ -76,7 +94,7 @@ class Decoder(object):
                     inputs['f0'][b][:flen].squeeze(1).cpu().detach().numpy().astype(np.float64),
                     cvmcep,
                     codeap,
-                    alpha=MCEP_ALPHA,
+                    alpha=self.mcep_alpha,
                     rmcep=mcep
             )
             wav = np.clip(wav, -32768, 32767)
@@ -84,7 +102,7 @@ class Decoder(object):
                         wav_dir,
                         '%s_%s_%d.wav' % (inputs['src'][b], inputs['src'][b], i)
             )
-            wavfile.write(wav_file, FS, wav.astype(np.int16))
+            wavfile.write(wav_file, self.fs, wav.astype(np.int16))
 
             # process src-trg wav
             cvmcep = output['trg_reconst'][b][:flen].cpu().detach().numpy()
@@ -98,7 +116,7 @@ class Decoder(object):
                     cvf0,
                     cvmcep,
                     codeap,
-                    alpha=MCEP_ALPHA,
+                    alpha=self.mcep_alpha,
                     rmcep=mcep
             )
             wav = np.clip(wav, -32768, 32767)
@@ -106,4 +124,4 @@ class Decoder(object):
                         wav_dir,
                         '%s_%s_%d.wav' % (inputs['src'][b], inputs['trg'][b], i)
             )
-            wavfile.write(wav_file, FS, wav.astype(np.int16))
+            wavfile.write(wav_file, self.fs, wav.astype(np.int16))

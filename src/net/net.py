@@ -5,7 +5,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
+
+import numpy as np
 
 from net import ConvRNN
 
@@ -27,7 +28,7 @@ class Net(nn.Module):
         self.n_cyc = n_cyc
 
         # HyperParameter
-        self.clamp_min = -1 * torch.log(torch.Tensor([1000000]).to(device))
+        self.clamp_min = -1 * np.log(1000000)
 
         # encoder
         self.enc = ConvRNN(self.config.encoder, device)
@@ -57,7 +58,7 @@ class Net(nn.Module):
             lat_dim = encoded.shape[2] // 2# + self.n_spk
             encoded = torch.cat((
                 encoded[:,:,:lat_dim],
-                torch.clamp(encoded[:,:,lat_dim:],min=self.clamp_min))),
+                torch.clamp(encoded[:,:,lat_dim:],min=self.clamp_min)),
             2)
 
             # sampling

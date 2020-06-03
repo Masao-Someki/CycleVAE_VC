@@ -1,1 +1,1 @@
-from .decode import Decoder
+from .decoder import Decoder

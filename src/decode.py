@@ -14,7 +14,7 @@ from net import Loss
 from net import Optimizers
 from writer import Logger
 from utils import get_config
-from .decoder import Decoder
+from decode import Decoder
 
 
 np.random.seed(4)
@@ -58,7 +58,7 @@ def decode(aegs, n_spk):
     logger.dataset.info('number of test samples: %d' % len(datasets['test']))
 
     # decoder for validation
-    decoder = Decoder(args.exp_dir, datasets['test'].scaler, logger=logger.decoder)
+    decoder = Decoder(args, datasets['test'].scaler, logger=logger.decoder)
 
     # decode
     logger.decoder.info('start decoding!')
@@ -109,6 +109,15 @@ if __name__ == '__main__':
                         help='Path to the directory where trained model will be saved.')
     parser.add_argument('--log_name', default=None, type=str,
                         help='Name log file will be saved')
+    parser.add_argument("--fs", default=None,
+                        type=int, help="Sample rate.")
+    parser.add_argument("--shiftms", default=None,
+                        type=int, help="Shift ms.")
+    parser.add_argument("--mcep_dim", default=None,
+                        type=int, help="Dimension of mel cepstrum")
+    parser.add_argument("--fftl", default=None,
+                        type=int, help="FFT length")
+
     args = parser.parse_args()
 
     n_spk = 2

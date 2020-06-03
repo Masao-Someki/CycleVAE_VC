@@ -25,26 +25,13 @@ from scipy.io import wavfile
 
 import librosa
 
-from src.prepro.utils import write_hdf5, read_hdf5
+from prepro.utils import write_hdf5, read_hdf5
 
 from multiprocessing import Array
 
 import pysptk as ps
 import pyworld as pw
 
-np.set_printoptions(threshold=np.inf)
-
-FS = 24000
-SHIFTMS = 5
-MINF0 = 40
-MAXF0 = 700
-MCEP_DIM = 49
-#MCEP_ALPHA = 0.41 # 16k
-#MCEP_ALPHA = 0.455 #22.05k
-MCEP_ALPHA = 0.466 #24k
-#MCEP_ALPHA = 0.544 #44.1k
-#MCEP_ALPHA = 0.554 #48k
-FFTL = 1024
 IRLEN = 1024
 LOWPASS_CUTOFF = 20
 HIGHPASS_CUTOFF = 70
@@ -73,7 +60,7 @@ def low_cut_filter(x, fs, cutoff=HIGHPASS_CUTOFF):
     return lcf_x
 
 
-def analyze(wav, fs=FS, minf0=MINF0, maxf0=MAXF0, fperiod=SHIFTMS, fftl=FFTL, f0=None, time_axis=None):
+def analyze(wav, fs=16000, minf0=70, maxf0=700, fperiod=5, fftl=1024, f0=None, time_axis=None):
     #f0_flr = pw.get_cheaptrick_f0_floor(fs, fftl)
     #logging.info(f0_flr)
     #fft_size = pw.get_cheaptrick_fft_size(fs, f0_flr)
@@ -89,7 +76,7 @@ def analyze(wav, fs=FS, minf0=MINF0, maxf0=MAXF0, fperiod=SHIFTMS, fftl=FFTL, f0
     return time_axis, f0, sp, ap
 
 
-def analyze_range(wav, fs=FS, minf0=MINF0, maxf0=MAXF0, fperiod=SHIFTMS, fftl=FFTL, f0=None, time_axis=None):
+def analyze_range(wav, fs=16000, minf0=70, maxf0=700, fperiod=5, fftl=1024, f0=None, time_axis=None):
     if f0 is None or time_axis is None:
         _f0, time_axis = pw.harvest(wav, fs, f0_floor=minf0, f0_ceil=maxf0, frame_period=fperiod)
         f0 = pw.stonemask(wav, _f0, time_axis, fs)
@@ -124,7 +111,7 @@ def convert_linf0(f0, f0_mean_src, f0_std_src, f0_mean_trg, f0_std_trg):
 
     return cvf0
 
-def mod_pow(cvmcep, mcep, alpha=MCEP_ALPHA, irlen=IRLEN):
+def mod_pow(cvmcep, mcep, alpha=0.41, irlen=IRLEN):
     cv_e = ps.mc2e(cvmcep, alpha=alpha, irlen=irlen)
     r_e = ps.mc2e(mcep, alpha=alpha, irlen=irlen)
     dpow = np.log(r_e/cv_e) / 2
@@ -246,22 +233,19 @@ def main():
         "--conf_path", default=None,
         type=str, help="Path to the config file")
     parser.add_argument(
-        "--fs", default=FS,
+        "--fs", default=None,
         type=int, help="Sample rate.")
     parser.add_argument(
-        "--shiftms", default=SHIFTMS,
+        "--shiftms", default=None,
         type=int, help="Shift ms.")
     parser.add_argument(
-        "--mcep_dim", default=MCEP_DIM,
+        "--mcep_dim", default=None,
         type=int, help="Dimension of mel cepstrum")
     parser.add_argument(
-        "--mcep_alpha", default=MCEP_ALPHA,
-        type=float, help="Alpha of mel cepstrum")
-    parser.add_argument(
-        "--fftl", default=FFTL,
+        "--fftl", default=None,
         type=int, help="FFT length")
     parser.add_argument(
-        "--n_jobs", default=10,
+        "--n_jobs", default=1,
         type=int, help="number of parallel jobs")
     args = parser.parse_args()
 
@@ -271,6 +255,21 @@ def main():
                         datefmt='%m/%d/%Y %I:%M:%S',
                         filename=args.log_dir + "/feature_extract.log")
     logging.getLogger().addHandler(logging.StreamHandler())
+
+    # mcep_alpha
+    if args.fs == 16000:
+        mcep_alpha = 0.41
+    elif args.fs == 22050:
+        mcep_alpha = 0.455
+    elif args.fs == 24000:
+        mcep_alpha = 0.466
+    elif args.fs == 44100:
+        mcep_alpha = 0.544
+    elif args.fs == 48000:
+        mcep_alpha = 0.554
+    else:
+        raise ValueError('sampling rate should be one of  \
+            16000, 22050, 24000, 44100, 48000')
 
     # read list
     file_list = sorted(glob.glob(os.path.join(args.wav_dir, "*.wav")))
@@ -303,15 +302,19 @@ def main():
             hdf5name = args.hdf5dir + "/" + os.path.basename(wav_name).replace(".wav", ".h5")
 
             # extimate f0 and ap
-            time_axis, f0, spc, ap = analyze_range(x, fs=args.fs, minf0=minf0, maxf0=maxf0, fperiod=args.shiftms, fftl=args.fftl)
+            time_axis, f0, spc, ap = analyze_range(x, fs=args.fs, minf0=minf0,
+                maxf0=maxf0, fperiod=args.shiftms, fftl=args.fftl)
             write_hdf5(hdf5name, '/ap', ap)
             write_hdf5(hdf5name, "/f0", f0)
 
             # convert to continuous f0 and low-pass filter
             uv, cont_f0 = convert_continuos_f0(np.array(f0))
-            cont_f0_lpf = low_pass_filter(cont_f0, int(1.0 / (args.shiftms * 0.001)), cutoff=20)
+            cont_f0_lpf = low_pass_filter(cont_f0,
+                int(1.0 / (args.shiftms * 0.001)), cutoff=20)
+
             cont_f0_lpf = np.expand_dims(cont_f0_lpf, axis=-1)
             uv = np.expand_dims(uv, axis=-1)
+
             write_hdf5(hdf5name, "/lcf0", np.log(cont_f0_lpf))
             write_hdf5(hdf5name, "/uv", uv)
 
@@ -323,7 +326,7 @@ def main():
             write_hdf5(hdf5name, "/codeap", codeap)
 
             # mcep
-            mcep = ps.sp2mc(spc, args.mcep_dim, args.mcep_alpha)
+            mcep = ps.sp2mc(spc, args.mcep_dim, mcep_alpha)
             write_hdf5(hdf5name, "/mcep", mcep)
 
     # divie list

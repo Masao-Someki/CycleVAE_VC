@@ -46,7 +46,7 @@ def decode(aegs, n_spk):
     # dataset
     datasets = {'test': Dataset(args.test_dir, args.stats_dir,
                                  logger.dataset, pad_len=2800,
-                                 batch_len=0, device=device)
+                                 batch_len=-1, device=device)
                 }
 
     data_loaders = {'test': DataLoader(datasets['test'],

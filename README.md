@@ -22,7 +22,8 @@ In the original model, AR structure is used for ConvRnn network. However, it tak
 
 - 2020/06/02 	Support one-to-one conversion model.
 
-
+## Vocoder branch
+- This branch supports vocoder training and decoing. In this branch, I support [PWG (ParallelWaveGAN)](https://github.com/kan-bayashi/ParallelWaveGAN) as a default neural vocoder.
 
 ## Requirements
 

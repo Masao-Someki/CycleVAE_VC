@@ -116,7 +116,7 @@ wav
 
     
 
-  **Options in training stage** 
+  **Flags in training stage** 
 
   - conf_path : Path to the training config file. Default: `./config/vc.conf`
   - model_name : Name of the saved model. Model name will be  `<model_name>.<num_iter>.pt` .
@@ -132,7 +132,7 @@ wav
   ```
   
 
-  **Options in conversion stage** 
+  **Flags in conversion stage** 
 
   - test_dir : Directory to save source wav files.
   - exp_dir : Directory to save converted wav files.
@@ -155,7 +155,10 @@ wav
 
   - You can find converted wav files in `./for_readme/wav` 
 
-    
+
+## Features to be implemented in the future
+- [ ] Support gin-config
+- [ ] Support ParallelWaveGAN-like neureal vocode
 
 ## References
 

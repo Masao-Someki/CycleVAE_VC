@@ -155,7 +155,7 @@ if echo ${stage} | grep -q 4; then
 
         for spk in ${all_spks[@]}; do
                 # training data
-                python src/prepro/extract_stft.py \
+                python src/prepro_vocoder/extract_stft.py \
                         --wav_dir ${wav_dir}/train/${spk} \
                         --hdf5dir ${data_dir}/train/${spk} \
                         --fs ${fs} \
@@ -165,7 +165,7 @@ if echo ${stage} | grep -q 4; then
                         --n_jobs ${n_jobs}
 
                 # val data
-                python src/prepro/extract_stft.py \
+                python src/prepro_vocoder/extract_stft.py \
                         --wav_dir ${wav_dir}/val/${spk} \
                         --hdf5dir ${data_dir}/val/${spk} \
                         --fs ${fs} \
@@ -174,4 +174,22 @@ if echo ${stage} | grep -q 4; then
 			--win_size ${fftl} \
                         --n_jobs ${n_jobs}
         done
+
+	# convert mcep with the trained model.
+	python src/prepro_vocoder/convert_mcep.py \
+                --data_dir ${data_dir}/train \
+                --stats_dir ${data_dir}/stats \
+                --conf_path ./config/vc.conf \
+                --checkpoint ${model_dir}/${model_name}.1448.pt \
+                --log_name ${model_name}
+
+	python src/prepro_vocoder/convert_mcep.py \
+                --data_dir ${data_dir}/val \
+                --stats_dir ${data_dir}/stats \
+                --conf_path ./config/vc.conf \
+                --checkpoint ${model_dir}/${model_name}.1448.pt \
+                --log_name ${model_name}
 fi
+
+
+

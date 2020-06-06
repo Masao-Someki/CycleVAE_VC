@@ -46,7 +46,7 @@ def prepro_for_vocoder(args):
 
             # get stft
             d = librosa.stft(y=x, n_fft=args.fftl,
-                                hop_length=args.hop_size,
+                                hop_length=int(0.001 * args.fs * args.shiftms),
                                 win_length=args.win_size)
 
             # norm
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                         help='sampling rate.')
     parser.add_argument('--fftl', default=1024, type=int,
                         help='FFT length.')
-    parser.add_argument('--hop_size', default=256, type=int,
+    parser.add_argument('--shiftms', default=5, type=int,
                         help='hop_size')
     parser.add_argument('--win_size', default=1024, type=int,
                         help='Window size.')

@@ -160,7 +160,7 @@ if echo ${stage} | grep -q 4; then
                         --hdf5dir ${data_dir}/train/${spk} \
                         --fs ${fs} \
                         --fftl ${fftl} \
-			--hop_size 120 \
+			--shiftms ${shiftms} \
 			--win_size ${fftl} \
                         --n_jobs ${n_jobs}
 
@@ -170,9 +170,8 @@ if echo ${stage} | grep -q 4; then
                         --hdf5dir ${data_dir}/val/${spk} \
                         --fs ${fs} \
                         --fftl ${fftl} \
-			--hop_size 120 \
+			--shiftms ${shiftms} \
 			--win_size ${fftl} \
                         --n_jobs ${n_jobs}
         done
 fi
-

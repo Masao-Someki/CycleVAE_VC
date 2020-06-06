@@ -145,3 +145,34 @@ if echo ${stage} | grep -q 3; then
 		--mcep_dim ${mcep_dim} \
 		--fftl ${fftl}
 fi
+
+#####################################
+############ stage 4 ################
+# data preprocessing for vocoder training
+if echo ${stage} | grep -q 4; then
+        # exp directory
+        mkdir -p ${exp_dir}/extract_vocoder
+
+        for spk in ${all_spks[@]}; do
+                # training data
+                python src/prepro/extract_stft.py \
+                        --wav_dir ${wav_dir}/train/${spk} \
+                        --hdf5dir ${data_dir}/train/${spk} \
+                        --fs ${fs} \
+                        --fftl ${fftl} \
+			--hop_size 120 \
+			--win_size ${fftl} \
+                        --n_jobs ${n_jobs}
+
+                # val data
+                python src/prepro/extract_stft.py \
+                        --wav_dir ${wav_dir}/val/${spk} \
+                        --hdf5dir ${data_dir}/val/${spk} \
+                        --fs ${fs} \
+                        --fftl ${fftl} \
+			--hop_size 120 \
+			--win_size ${fftl} \
+                        --n_jobs ${n_jobs}
+        done
+fi
+

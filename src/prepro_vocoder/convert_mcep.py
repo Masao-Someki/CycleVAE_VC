@@ -11,12 +11,12 @@ from torch.utils.data import DataLoader
 
 from net import Net
 from dataset import Dataset
-from net import Loss
 from net import Optimizers
 from writer import Logger
 from utils import get_config
 from decode import Decoder
 
+from speech import Synthesizer
 
 np.random.seed(4)
 torch.manual_seed(4)
@@ -40,6 +40,7 @@ class SimpleDataset(Dataset):
                 self.data.append(
                     {
                         'uv': self._read_feature(f, 'uv'),
+                        'f0': self._read_feature(f, 'f0'),
                         'lcf0': self._read_feature(f, 'lcf0'),
                         'codeap': self._read_feature(f, 'codeap'),
                         'mcep': self._read_feature(f, 'mcep'),
@@ -49,6 +50,67 @@ class SimpleDataset(Dataset):
                     }
                 )
             self.ref_list = ['file_path']
+
+class SimpleDecoder(Decoder):
+    def __init__(self, args, scaler, logger=None):
+        # directory to save wav files
+        self.fs = args.fs
+        self.shiftms = args.shiftms
+        self.fftl = args.fftl
+
+        # mcep_alpha
+        if args.fs == 16000:
+            self.mcep_alpha = 0.41
+        elif args.fs == 22050:
+            self.mcep_alpha = 0.455
+        elif args.fs == 24000:
+            self.mcep_alpha = 0.466
+        elif args.fs == 44100:
+            self.mcep_alpha = 0.544
+        elif args.fs == 48000:
+            self.mcep_alpha = 0.554
+        else:
+            raise ValueError('sampling rate should be one of  \
+                16000, 22050, 24000, 44100, 48000')
+
+        # scaler
+        self.scaler = scaler
+
+        # synthesizer
+        self.synthesizer = Synthesizer(fs=args.fs, fftl=args.fftl, shiftms=args.shiftms)
+
+        # logger
+        if logger is not None:
+            self.logger = logger
+        else:
+            self.logger = logging.getLogger(__name__)
+
+    def decode(self, inputs, output):
+        # mcep
+        mcep = inputs['mcep'][0].cpu().detach().numpy()
+        mcep = self._inverse_transform('mcep', mcep).astype(np.float64)
+
+        # process src-src wav
+        cvmcep = output['reconst_half'][0][0].cpu().detach().numpy()
+        cvmcep = self._inverse_transform('mcep', cvmcep).astype(np.float64)
+
+        # codeap
+        codeap = inputs['codeap'][0].cpu().detach().numpy()
+        codeap = self._inverse_transform('codeap', codeap).astype(np.float64)
+
+        # synthesize
+        wav = self.synthesizer.synthesis(
+                inputs['f0'][0].squeeze(1).cpu().detach().numpy().astype(np.float64),
+                cvmcep,
+                codeap,
+                alpha=self.mcep_alpha,
+                rmcep=mcep
+        )
+
+        wav = np.clip(wav, -32768, 32767)
+        wav = wav / 32767
+
+        return wav
 
 
 def decode(aegs, n_spk):
@@ -85,6 +147,9 @@ def decode(aegs, n_spk):
                                         shuffle=False)
                     }
 
+    # decoder
+    decoder = SimpleDecoder(args, datasets['convert'].scaler, logger=logger.convert)
+
     # logging about training data
     logger.dataset.info('number of samples: %d' % len(datasets['convert']))
 
@@ -116,11 +181,17 @@ def decode(aegs, n_spk):
                                     batch['codeap']),
                                 dim=-1).to(device),
                         'src_code': batch['src_code'].to(device),
-                        'trg_code': batch['trg_code'].to(device)
+                        'trg_code': batch['trg_code'].to(device),
+                        'mcep': batch['mcep'],
+                        'f0': batch['f0'],
+                        'codeap': batch['codeap']
                 }
 
             # forward propagation with target-pos output
             outputs = net(inputs)
+
+            # decode
+            wav = decoder.decode(inputs, outputs)
 
             # save
             with h5py.File(batch['file_path'][0], 'a') as f:
@@ -130,11 +201,15 @@ def decode(aegs, n_spk):
                     # delete value
                     del f['cvmcep']
 
+                if 'cvwav' in f.keys():
+                    del f['cvwav']
+
                 # save converted mcep
                 f.create_dataset('cvmcep',
                         data=outputs['reconst_half'][0].squeeze(0)\
                         .cpu().detach().numpy()
                 )
+                f.create_dataset('cvwav', data=wav)
 
 
 if __name__ == '__main__':
@@ -145,6 +220,14 @@ if __name__ == '__main__':
                         help='Path to the stats files.')
     parser.add_argument('--conf_path', default=None, type=str,
                         help='Path to the config file')
+    parser.add_argument("--fs", default=None,
+                        type=int, help="Sample rate.")
+    parser.add_argument("--shiftms", default=None,
+                        type=int, help="Shift ms.")
+    parser.add_argument("--mcep_dim", default=None,
+                        type=int, help="Dimension of mel cepstrum")
+    parser.add_argument("--fftl", default=None,
+                        type=int, help="FFT length")
     parser.add_argument('--checkpoint', default=None, type=str,
                         help='Path to the directory where trained model will be saved.')
     parser.add_argument('--log_name', default=None, type=str,

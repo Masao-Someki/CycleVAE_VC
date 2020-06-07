@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from net import Net
 from dataset import Dataset
-from net import Loss
+from loss import Loss
 from net import Optimizers
 from writer import Logger
 from utils import get_config

@@ -19,7 +19,7 @@ In the original model, AR structure is used for ConvRnn network. However, it tak
 
 
 ## What's new
-
+- 2020/06/11    [NEW!] Support ParallelWaveGAN in vocoder branch.
 - 2020/06/02 	Support one-to-one conversion model.
 
 

@@ -174,6 +174,7 @@ wav
 - [nlpyang/PreSumm](https://github.com/nlpyang/PreSumm)
 - [Non-Parallel Voice Conversion with Cyclic Variational Autoencoder](https://arxiv.org/abs/1907.10185)
 - [声優統計コーパス](https://voice-statistics.github.io/)
+- [ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
 
 
 

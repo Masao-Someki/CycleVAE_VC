@@ -11,14 +11,7 @@ from scipy.io import wavfile
 
 from speech import Synthesizer
 
-FS = 24000
-#FS = 22050
-N_GPUS = 1
-SHIFT_MS = 5
-#MCEP_ALPHA = 0.41000000000000003
-#MCEP_ALPHA = 0.455
-MCEP_ALPHA = 0.466
-FFTL = 1024
+
 IRLEN = 1024
 INTERVALS = 10
 SEED = 1
@@ -52,7 +45,7 @@ class Decoder(object):
         self.scaler = scaler
 
         # synthesizer
-        self.synthesizer = Synthesizer(fs=FS, fftl=FFTL, shiftms=SHIFT_MS)
+        self.synthesizer = Synthesizer(fs=args.fs, fftl=args.fftl, shiftms=args.shiftms)
 
         # logger
         if logger is not None:

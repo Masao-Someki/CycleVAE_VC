@@ -4,19 +4,19 @@
 #  MIT License (https://opensource.org/licenses/MIT)
 
 import os
+import sys
 import argparse
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from net import Net
-from dataset import Dataset
-from loss import Loss
-from net import Optimizers
+from dataset import VocoderDataset
 from writer import Logger
+from net import Optimizers
 from utils import get_config
-from decode import Decoder
+from net import VocoderNet
+from loss import GenLoss, DisLoss
 
 np.random.seed(4)
 torch.manual_seed(4)
@@ -32,35 +32,37 @@ def train(args, n_spk):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # hyper-set_parameters
-    pad_len = 2800
     batch_len = 80
-    assert pad_len % batch_len == 0
 
     # trainind settings and model
-    net = Net(config.model, n_spk, n_cyc=2, device=device)
+    net = VocoderNet(config.model, upsample_params={"upsample_scales": [4, 5, 6]}, device=device)
     net.to(device)
     iter_count = 0
-    optim = Optimizers(config.optim)
-    optim.set_parameters(list(net.named_parameters()))
+    GenOptim = Optimizers(config.gen_optim)
+    GenOptim.set_parameters(list(net.generator.named_parameters()))
+    DisOptim = Optimizers(config.dis_optim)
+    DisOptim.set_parameters(list(net.discriminator.named_parameters()))
     criteria_before = 10000
     past_model = ''
 
     # resume
     if args.resume is not None:
+        logger.train.info('Loading checkpoint from %s' % args.resume)
         dic = torch.load(args.resume)
         net.load_state_dict(dic['model'])
         iter_count = dic['iter_count']
-        optim = dic['optim']
+        GenOptim = dic['GenOptim']
+        DisOptim = dic['DisOptim']
         criteria_before = dic['criteria']
         past_model = dic['path']
 
     # dataset
-    datasets = {'train': Dataset(args.train_dir, args.stats_dir,
-                                 logger.dataset, pad_len=pad_len,
-                                 batch_len=batch_len, device=device),
-                'val'  : Dataset(args.val_dir, args.stats_dir,
-                                 logger.dataset, pad_len=pad_len,
-                                 batch_len=batch_len, device=device)
+    datasets = {'train': VocoderDataset(args.train_dir, args.stats_dir,
+                                 logger.dataset, hop_size=120,
+                                 device=device),
+                'val'  : VocoderDataset(args.val_dir, args.stats_dir,
+                                 logger.dataset, hop_size=120,
+                                 device=device)
                 }
 
     data_loaders = {'train': DataLoader(datasets['train'],
@@ -69,26 +71,23 @@ def train(args, n_spk):
                     'val'  : DataLoader(datasets['val'],
                                         batch_size=config.val.batch_size,
                                         shuffle=False)}
+
+    # loss function
+    loss_gen = GenLoss().to(device)
+    loss_dis = DisLoss().to(device)
+
+    # log
     # logging about training data
     logger.dataset.info('number of training samples: %d' % len(datasets['train']))
     logger.dataset.info('number of validation samples: %d' % len(datasets['val']))
-
-    # loss function
-    loss_fn = Loss(device)
-
-    # log net
     logger.train.info(net)
-
-    # training!
     logger.train.info('Start training from iteration %d' % iter_count)
 
-    # Hypre-parameter required to compute loss
-    scale_var = torch.Tensor(datasets['train'].scaler['mcep'].scale_).to(device)
-
-    # train
+    # train PWG
     for e in range(config.train.epoch):
         net.train()
-        losses = []
+        gen_losses = []
+        dis_losses = []
 
         for batch in data_loaders['train']:
             # iter for batch
@@ -96,86 +95,86 @@ def train(args, n_spk):
 
             # training data to device
             inputs = {
-                    'feat': torch.cat((
-                                batch['uv'],
-                                batch['lcf0'],
-                                batch['codeap'],
-                                batch['mcep']),
-                            dim=-1).to(device),
-                    'cv_stats': torch.cat((
-                                batch['uv'],
-                                batch['lcf0'],
-                                batch['codeap']),
-                            dim=-1).to(device),
-                    'src_code': batch['src_code'].to(device),
-                    'trg_code': batch['trg_code'].to(device),
-                    'src_spk': batch['src_id'].to(device),
-                    'trg_spk': batch['trg_id'].to(device),
-                    'flen': batch['flen'].to(device)
+                    'cvmcep': batch['cvmcep'].to(device),
+                    'wav': batch['wav'].to(device),
+                    'cvwav': batch['cvwav'].to(device)
             }
 
+            #######################
+            ###### Generator ######
+            #######################
             # forward propagation
-            out = net(inputs)
+            out_gen = net.generator(inputs)
 
             # compute loss
-            loss, loss_dic = loss_fn(out, inputs, scale_var)
+            if iter_count < config.train.discriminator_start:
+                gen_loss, gen_loss_dic = loss_gen(out_gen, inputs)
+            else:
+                gen_loss, gen_loss_dic = loss_gen(out_gen, inputs, net.discriminator)
 
             # backward
-            loss.backward()
-            optim.step()
+            gen_loss.backward()
+            GenOptim.step()
+
+            #######################
+            #### Discremenator ####
+            #######################
+            # forward propagation
+            out_dis = net.discriminator(inputs, out_gen)
+
+            # compute loss
+            dis_loss, dis_loss_dic = loss_dis(out_dis)
+
+            # backward
+            dis_loss.backward()
+            DisOptim.step()
 
             # log
-            losses.append(loss.cpu().detach().numpy())
+            gen_losses.append(gen_loss.cpu().detach().numpy())
+            dis_losses.append(dis_loss.cpu().detach().numpy())
 
             if iter_count % config.train.log_every == 0:
-                logger.train.info('loss at iter %d : %s' % (iter_count, loss.item()))
-                logger.train.figure('train', loss_dic, iter_count)
+                logger.train.info('Gen-loss / Dis-loss at iter %d : %.5f, %.5f'\
+                    % (iter_count, gen_loss.item(), dis_loss.item()))
+                logger.train.figure('train/gen', gen_loss_dic, iter_count)
+                logger.train.figure('train/dis', dis_loss_dic, iter_count)
         # log
-        logger.train.info('Loss for epoch %d : %.5f' % (e, np.mean(losses)))
+        logger.train.info('Gen-loss/Dis-loss epoch %d : %.5f, %.5f' \
+                % (e, np.mean(gen_losses), np.mean(dis_losses)))
 
-        # Validation
-        logger.val.info('Start validation at epoch %d' % e)
+        # validate
         net.eval()
-        losses = []
         criterias = []
+        losses = []
+
         with torch.no_grad():
             for batch in data_loaders['val']:
-                # to device
+                # training data to device
                 inputs = {
-                    'feat': torch.cat((
-                            batch['uv'],
-                            batch['lcf0'],
-                            batch['codeap'],
-                            batch['mcep']),
-                        dim=-1).to(device),
-                    'cv_stats': torch.cat((
-                            batch['uv'],
-                            batch['lcf0'],
-                            batch['codeap']),
-                        dim=-1).to(device),
-                    'src_code': batch['src_code'].to(device),
-                    'trg_code': batch['trg_code'].to(device),
-                    'src_spk': batch['src_id'].to(device),
-                    'trg_spk': batch['trg_id'].to(device),
-                    'flen': batch['flen'].to(device)
+                        'cvmcep': batch['cvmcep'].to(device),
+                        'wav': batch['wav'].to(device),
+                        'cvwav': batch['cvwav'].to(device)
                 }
 
+                #######################
+                ###### Generator ######
+                #######################
                 # forward propagation
-                out = net(inputs)
+                out_gen = net.generator(inputs)
 
                 # compute loss
-                loss, loss_dic = loss_fn(out, inputs, scale_var)
-                criteria = loss_dic['mcd/1st']
+                gen_loss, gen_loss_dic = loss_gen(out_gen, inputs)
 
-                # log
-                losses.append(loss.cpu().detach().numpy())
-                criterias.append(criteria)
+                # loss
+                criterias.append(gen_loss_dic['multi_res_stft'])
+                losses.append(gen_loss.item())
+
 
         # log
         criteria = np.mean(criterias)
         logger.val.info('Validation loss at epoch %d: %.5f' % (e, np.mean(losses)))
         logger.val.info('Validation criteria: %.5f' % criteria)
-        logger.val.figure('val', loss_dic, iter_count)
+        logger.val.figure('val/gen', gen_loss_dic, e)
 
         # save model with best criteria
         if criteria < criteria_before:
@@ -192,7 +191,8 @@ def train(args, n_spk):
             save_dic = {
                     'model': net.state_dict(),
                     'iter_count': iter_count,
-                    'optim': optim,
+                    'GenOptim': GenOptim,
+                    'DisOptim': DisOptim,
                     'criteria': criteria,
                     'path': save_file
                 }
@@ -212,16 +212,12 @@ if __name__ == '__main__':
                         help='Path to the validation data')
     parser.add_argument('--stats_dir', default=None, type=str,
                         help='Path to the stats files.')
-    parser.add_argument('--total_stats', default=None, type=str,
-                        help='Path to the total_stats.h5')
     parser.add_argument('--conf_path', default=None, type=str,
                         help='Path to the config file')
     parser.add_argument('--model_dir', default=None, type=str,
                         help='Path to the directory where trained model will be saved.')
     parser.add_argument('--model_name', default=None, type=str,
                         help='Model name.')
-    parser.add_argument('--decode_dir', default=None, type=str,
-                        help='Path to the directory where decoded wav files will be saved')
     parser.add_argument('--log_name', default=None, type=str,
                         help='Name log file will be saved')
     parser.add_argument('--resume', default=None, type=str,

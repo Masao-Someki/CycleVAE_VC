@@ -11,3 +11,4 @@ logzero
 pyyaml
 tensorboardX
 tensorboard
+parallel_wavegan

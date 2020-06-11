@@ -20,7 +20,8 @@ In the original model, AR structure is used for ConvRnn network. However, it tak
 
 ## What's new
 
-- 2020/06/02 	Support one-to-one conversion model.
+- 2020/06/11	Support training script of Parallel-Wave-GAN.
+- 2020/06/02	Support one-to-one conversion model.
 
 ## Vocoder branch
 - This branch supports vocoder training and decoing. In this branch, I support [PWG (ParallelWaveGAN)](https://github.com/kan-bayashi/ParallelWaveGAN) as a default neural vocoder.
@@ -143,7 +144,7 @@ wav
 
 ## Results
 
-- training steps
+- training steps for CycleVAE_VC
 
   ![](./for_readme/img/scalars_1.png)
 
@@ -152,10 +153,18 @@ wav
 - sounds
 
   - demo wav files are acquired from https://voice-statistics.github.io/
+  
+- You can find converted wav files in `./for_readme/wav/cvae` 
+  
 
-  - You can find converted wav files in `./for_readme/wav` 
+  
+- training steps for ParallelWaveGAN
 
-    
+  ![](/home/masao/doc/vc/for_readme/img/scalars_3.png)
+  
+- You can find converted wav files in `./for_readme/wav/vocoder`
+
+   
 
 ## References
 

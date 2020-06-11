@@ -160,7 +160,7 @@ wav
   
 - training steps for ParallelWaveGAN
 
-  ![](/home/masao/doc/vc/for_readme/img/scalars_3.png)
+  ![](./for_readme/img/scalars_3.png)
   
 - You can find converted wav files in `./for_readme/wav/vocoder`
 

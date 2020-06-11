@@ -156,22 +156,16 @@ wav
   
 - You can find converted wav files in `./for_readme/wav/cvae` 
   
-
-  
 - training steps for ParallelWaveGAN
 
   ![](./for_readme/img/scalars_3.png)
   
 - You can find converted wav files in `./for_readme/wav/vocoder`
 
-<<<<<<< HEAD
 
 ## Features to be implemented in the future
 - [ ] Support gin-config
-- [ ] Support ParallelWaveGAN-like neureal vocode
-=======
    
->>>>>>> 9dd9d44638025743a4a34f73f5012c160b9fbdf1
 
 ## References
 

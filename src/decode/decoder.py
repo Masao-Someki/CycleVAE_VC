@@ -11,6 +11,10 @@ from scipy.io import wavfile
 
 from speech import Synthesizer
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9dd9d44638025743a4a34f73f5012c160b9fbdf1
 IRLEN = 1024
 INTERVALS = 10
 SEED = 1

@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 
 from net import Net
 from dataset import Dataset
-from net import Loss
 from net import Optimizers
 from writer import Logger
 from utils import get_config
@@ -61,8 +60,13 @@ def decode(aegs, n_spk):
     decoder = Decoder(args, datasets['test'].scaler, logger=logger.decoder)
 
     # decode
+    count = 0
     logger.decoder.info('start decoding!')
     for i, batch in enumerate(data_loaders['test']):
+        # log
+        count += 1
+        logger.decoder.info('Number of processing files: %d / %d' % (count, len(datasets['test'])))
+
         # inputs
         inputs = {
                     'feat': torch.cat((

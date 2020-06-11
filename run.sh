@@ -4,7 +4,7 @@
 stage=r123
 
 # speakers to train
-all_spks=(jvs001 jvs002)
+all_spks=(jvs001 yukari)
 
 # directories
 wav_dir=wav
@@ -20,7 +20,10 @@ mcep_dim=49
 fftl=1024
 
 # training related
-model_name=test_model
+model_name=jvs001_yukari
+voc_model_name=001yukari_vocoder
+checkpoint=90576
+checkpoint_voc=45251
 
 # number of cpus
 n_jobs=16
@@ -138,7 +141,7 @@ if echo ${stage} | grep -q 3; then
 		--exp_dir ${decode_dir} \
 		--stats_dir ${data_dir}/stats \
 		--conf_path ./config/vc.conf \
-		--checkpoint ${model_dir}/${model_name}.1448.pt \
+		--checkpoint ${model_dir}/${model_name}.${checkpoint}.pt \
 		--log_name ${model_name} \
 		--fs ${fs} \
 		--shiftms ${shiftms} \
@@ -152,44 +155,76 @@ fi
 if echo ${stage} | grep -q 4; then
         # exp directory
         mkdir -p ${exp_dir}/extract_vocoder
-
         for spk in ${all_spks[@]}; do
                 # training data
                 python src/prepro_vocoder/extract_stft.py \
                         --wav_dir ${wav_dir}/train/${spk} \
                         --hdf5dir ${data_dir}/train/${spk} \
-                        --fs ${fs} \
-                        --fftl ${fftl} \
-			--shiftms ${shiftms} \
-			--win_size ${fftl} \
+			--fs ${fs} \
                         --n_jobs ${n_jobs}
 
                 # val data
                 python src/prepro_vocoder/extract_stft.py \
                         --wav_dir ${wav_dir}/val/${spk} \
                         --hdf5dir ${data_dir}/val/${spk} \
-                        --fs ${fs} \
-                        --fftl ${fftl} \
-			--shiftms ${shiftms} \
-			--win_size ${fftl} \
+			--fs ${fs} \
                         --n_jobs ${n_jobs}
         done
 
 	# convert mcep with the trained model.
 	python src/prepro_vocoder/convert_mcep.py \
                 --data_dir ${data_dir}/train \
-                --stats_dir ${data_dir}/stats \
+		--stats_dir ${data_dir}/stats \
                 --conf_path ./config/vc.conf \
-                --checkpoint ${model_dir}/${model_name}.1448.pt \
+                --fs ${fs} \
+                --shiftms ${shiftms} \
+                --mcep_dim ${mcep_dim} \
+                --fftl ${fftl} \
+                --checkpoint ${model_dir}/${model_name}.${checkpoint}.pt \
                 --log_name ${model_name}
+
 
 	python src/prepro_vocoder/convert_mcep.py \
                 --data_dir ${data_dir}/val \
                 --stats_dir ${data_dir}/stats \
                 --conf_path ./config/vc.conf \
-                --checkpoint ${model_dir}/${model_name}.1448.pt \
+		--fs ${fs} \
+                --shiftms ${shiftms} \
+                --mcep_dim ${mcep_dim} \
+                --fftl ${fftl} \
+                --checkpoint ${model_dir}/${model_name}.${checkpoint}.pt \
                 --log_name ${model_name}
 fi
 
 
+######################################
+############ stage 5 ################@
+# vocoder training
+if echo ${stage} | grep -q 5; then
+        mkdir -p ${model_dir}
+        python src/train_vocoder.py \
+                --train_dir ${data_dir}/train \
+                --val_dir ${data_dir}/val \
+                --stats_dir ${data_dir}/stats \
+                --conf_path ./config/vc.conf \
+                --model_dir ${model_dir} \
+                --model_name ${voc_model_name} \
+                --log_name ${voc_model_name}
+                #--resume ${model_dir}/${model_name}.5507.pt
+fi
 
+
+######################################
+############ stage 6 ################3
+# decode
+if echo ${stage} | grep -q 6; then
+        decode_dir=${exp_dir}/${model_name}
+        mkdir -p ${decode_dir}
+        python src/decode_vocoder.py \
+                --decode_dir ${data_dir}/val \
+                --exp_dir ${decode_dir} \
+                --stats_dir ${data_dir}/stats \
+                --conf_path ./config/vc.conf \
+                --checkpoint ${model_dir}/${voc_model_name}.${checkpoint_voc}.pt \
+                --log_name ${voc_model_name} 
+fi

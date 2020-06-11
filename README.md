@@ -157,7 +157,6 @@ wav
 
 ## Features to be implemented in the future
 - [ ] Support gin-config
-- [ ] Support ParallelWaveGAN-like neureal vocode
 
 ## References
 

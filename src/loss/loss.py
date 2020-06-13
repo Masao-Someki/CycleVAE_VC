@@ -8,7 +8,7 @@ class Loss(nn.Module):
     def __init__(self, device):
         super(Loss, self).__init__()
         self.mcd_loss = MCDLoss(device)
-        self.kld_loss = KLDLoss()
+        self.lat_loss = LatentLoss()
 
     def forward(self, x, y, scaler):
         # loss between ground truth and reconst and target
@@ -17,12 +17,12 @@ class Loss(nn.Module):
         ret = {}
         ret['mcd/1st'] = 0
         ret['mcd/2nd'] = 0
-        ret['kl/1st'] = 0
-        ret['kl/2nd'] = 0
+        ret['lat/1st'] = 0
+        ret['lat/2nd'] = 0
         ret['bp'] = 0
 
         reconst_loss = 0
-        kl_loss = 0
+        lat_loss = 0
         mcd_half = 0
         mcd_last = 0
 
@@ -44,23 +44,23 @@ class Loss(nn.Module):
             ret['mcd/1st'] += mcd_half.item()
             ret['mcd/2nd'] += mcd_last.item()
 
-            # loss for KL-distance
-            kl1_loss = self.kld_loss(x['latent_1'][c])
-            kl2_loss = self.kld_loss(x['latent_2'][c])
-            kl_loss += (kl1_loss + kl2_loss)
+            # loss for latent dimension
+            lat1_loss = self.lat_loss(x['latent_1'][c])
+            lat2_loss = self.lat_loss(x['latent_2'][c])
+            lat_loss += (lat1_loss + lat2_loss)
 
             # save for log
-            ret['kl/1st'] += kl1_loss.item()
-            ret['kl/2nd'] += kl2_loss.item()
+            ret['lat/1st'] += lat1_loss.item()
+            ret['lat/2nd'] += lat2_loss.item()
 
         # take mean
-        ret['bp'] = (reconst_loss + kl_loss).item()
+        ret['bp'] = (reconst_loss + lat_loss).item()
         ret['mcd/1st'] = ret['mcd/1st'] / (c + 1)
         ret['mcd/2nd'] = ret['mcd/2nd'] / (c + 1)
-        ret['kl/1st'] = ret['kl/1st'] / (c + 1)
-        ret['kl/2nd'] = ret['kl/2nd'] / (c + 1)
+        ret['lat/1st'] = ret['lat/1st'] / (c + 1)
+        ret['lat/2nd'] = ret['lat/2nd'] / (c + 1)
 
-        return reconst_loss + kl_loss, ret
+        return reconst_loss + lat_loss, ret
 
 
 class MCDLoss(nn.Module):
@@ -78,9 +78,9 @@ class MCDLoss(nn.Module):
         mcd = self.coef * torch.sum(l1_loss, 2)
         return torch.mean(mcd)
 
-class KLDLoss(nn.Module):
+class LatentLoss(nn.Module):
     def __init__(self):
-        super(KLDLoss, self).__init__()
+        super(LatentLoss, self).__init__()
 
     def forward(self, x):
         # shape of x: (B, L, D), where B: batch_size, L: length, D: latent_dim * 2

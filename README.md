@@ -20,8 +20,9 @@ In the original model, AR structure is used for ConvRnn network. However, it tak
 
 ## What's new
 
-- 2020/06/11	Support training script of Parallel-Wave-GAN.
-- 2020/06/02	Support one-to-one conversion model.
+- 2020/06/11    [NEW!] Support ParallelWaveGAN in vocoder branch.
+- 2020/06/02 	Support one-to-one conversion model.
+
 
 ## Vocoder branch
 - This branch supports vocoder training and decoing. In this branch, I support [PWG (ParallelWaveGAN)](https://github.com/kan-bayashi/ParallelWaveGAN) as a default neural vocoder.
@@ -165,7 +166,6 @@ wav
 
 ## Features to be implemented in the future
 - [ ] Support gin-config
-   
 
 ## References
 

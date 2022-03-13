@@ -179,6 +179,6 @@ The author would like to thank [Patrick Lumban Tobing](https://arxiv.org/search/
 
 Someki Masao ([@Masao-Someki](https://github.com/Masao-Someki))
 
-e-mail : `masao.someki@outlook.jp`
+e-mail : `masao.someki@gmail.com`
 
 
